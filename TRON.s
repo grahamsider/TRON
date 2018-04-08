@@ -90,7 +90,6 @@
 	
 	
 	
-	
 	##############
 	# EXCEPTIONS #
 	##############
@@ -253,8 +252,11 @@ _game_start:							# GAME START
 	
 	# SETUP FOR GAME
 
+<<<<<<< HEAD
 	add r4, r0, r0
 	addi r5, r0, 16
+=======
+>>>>>>> 15dd97ae1b48506a87ce8559a8621c9b0cb99585
 
 _fill_background:
 
@@ -420,14 +422,11 @@ _collision_p1:							# PLAYER 1 COLLISION OCCURED
 	# ELSE: WAIT FOR BUTTON PRESS, br _game_start
 
 _collision_p2:							# PLAYER 2 COLLISION OCCURED
-	
 
 
 _same_frame_collision:
 	
-
 	
 _game_end:								# GAME FINISHED
 	
 	br _game_end						# WAIT FOR BUTTON PRESS
-#	ret 								# RESTART
