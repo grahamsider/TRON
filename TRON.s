@@ -1,18 +1,18 @@
 
-	 ####################
-	######################
-	##     			 	##
-	##	  TRON v2.0	 	##
-	##			 		##
-	##	  Created by 	##
-	##	  Graham Sider	##
-	##	& Junhyeok Hong	##
-	##  			 	##
-	##	  ECE 243		##
-	##	  2018		 	##
-	##			 		##
-	######################
-	 ####################
+	 #####################
+	#######################
+	##					 ##
+	##	  TRON v2.0		 ##
+	##					 ##
+	##	  Created by 	 ##
+	##	  Graham Sider	 ##
+	##	& Junhyeok Hong	 ##
+	##  				 ##
+	##	  ECE 243		 ##
+	##	  2018			 ##	   			
+	##					 ##
+	#######################
+	 #####################
 	
 	
 	
@@ -24,38 +24,63 @@
 	.section .data
 	.align 2
 	
-	# VGA ADAPTER
-	.equ VGA_PBASE, 0x08000000			# STORED IN: r8
-	.equ VGA_CBASE, 0x09000000
 	
+	### I/O ###
+	
+
 	# VIDEO CONTROL BUFFER
-	.equ VCB_BASE, 0xFF203020			# STORED IN: r9
+	.equ VCB_BASE, 0xFF203020			# STORED IN: r8
 	.equ VCB_FRONT_BUFFER, 0x00			# BASE
 	.equ VCB_BACK_BUFFER, 0x04			# BASE + 4
 	.equ VCB_PIXEL_COORDS, 0x08			# BASE + 8
 	.equ VCB_CONFIG, 0x0C				# BASE + 12
 	
-	#PS/2 Controller
-	.equ PS2_BASE, 0xFF200100			# STORED IN: r10
+	#PS/2 CONTROLLER
+	.equ PS2_BASE, 0xFF200100			# STORED IN: r9
 	.equ PS2_CONTROL, 0x04				# BASE + 4
 	
-	# (TEMP) LEDS
-	.equ LED_BASE, 0xFF200000			# STORED IN: r11
 	
-    # Data for Player One
-    PlayerOneData:  .byte ' '           # STORE IN: r12
-    .equ KEY_A, 0x1C                    # All these keys stored in r7
-    .equ KEY_W, 0x1D
-    .equ KEY_S, 0x1B
-    .equ KEY_D, 0x23
+	### STORAGE ###
+	
+	
+	# PLAYER ONE DATA
+    P1_KEY:  .byte ' '
+    .equ P1_START_COORDS, 0x1DC50
+    .equ KEY_A, 0x01C                   
+    .equ KEY_W, 0x01D
+    .equ KEY_S, 0x01B
+    .equ KEY_D, 0x023
 
-    # Data for Player Two
-    PlayerTwoData:  .byte ' '
+    # PLAYER TWO DATA
+    P2_KEY:  .byte ' '
+    .equ P2_START_COORDS, 0x1DE30
+	.equ KEY_ARROW_L, 0x6B
+	.equ KEY_ARROW_U, 0x75
+	.equ KEY_ARROW_D, 0x72
+	.equ KEY_ARROW_R, 0x74
 
-    # Colour Values For the Pixel buffer
+	# MOVEMENT VALS
+	.equ MOVE_RIGHT, 2
+	.equ MOVE_LEFT, -2
+	.equ MOVE_UP, -1024
+	.equ MOVE_DOWN, 1024
+	
+	# IN GAME OR SPLASHSCREEN
+	GAME_OR_SPLASH:	.byte ' '
 
-    .equ red, 0xF100
-    .equ blue, 0x001F
+    # COLOUR VALS
+    .equ COLOUR_RED, 0xF100
+    .equ COLOUR_BLUE, 0x001F
+	.equ COLOUR_WHITE, 0xFFFF
+	.equ COLOUR_BLACK, 0x0000
+
+	# BUFFER SRAM MEMORY LOCATIOINS
+	.equ VGA_FRONT_BUFFER, 0X01000000
+	.equ VGA_FRONT_BUFFER_END, 0X0103FFFF		# <NOTE> CHANGE TO 0103BE7E ?
+	.equ VGA_BACK_BUFFER, 0X02000000
+	.equ VGA_BACK_BUFFER_END, 0x0203FFFF
+	
+	
 	
 	
 	##############
@@ -65,56 +90,80 @@
 	.section .exceptions, "ax"
 	.align 2
 	
-_isr:
+_isr:									# CONSIDER CHANGING TO USE ET (r24)
 	
-	ldwio r4, 0(r10)					# r4 = PS2 BASE INFO
-	andi r5, r4, 0x00008000				# r5 = TEMP
-	srli r5, 0x0E						
-	bne r5, r0, _ps2_valid				# DATA VALID CHECK
-	br _inf_loop						# PS2 DATA INVALID
+	ldwio et, 0(r9)						# et = PS2 BASE INFO
+	andi et, et, 0x00008000				# et = CHECK VALID READ (TEMP)
+	srli et, et, 0x0E						
+	bne et, r0, _ps2_valid				# DATA VALID CHECK
+	br _in_game							# PS2 DATA INVALID
 	
 _ps2_valid:								# PS2 DATA VALID
 	
-	andi r5, r4, 0xFFFF0000				# r5 = NUM CHARS LEFT TO READ
-	andi r6, r4, 0x000000FF				# r6 = DATA
+	ldwio et, 0(r9)						# et = DATA (TEMP)
+	andi et, et, 0x000000FF
+	
+	movui r23, KEY_A					# r23 = TEMP KEYS
+	beq et, r23, _p1_key_a
+	
+	movui r23, KEY_W
+	beq et, r23, _p1_key_w
+	
+	movui r23, KEY_S
+	beq et, r23, _p1_key_s
+	
+	movui r23, KEY_D
+	beq et, r23, _p1_key_d
+	
+	movui r23, KEY_ARROW_L
+	beq et, r23, _p2_key_arrow_l
+	
+	movui r23, KEY_ARROW_U
+	beq et, r23, _p2_key_arrow_u
+	
+	movui r23, KEY_ARROW_D
+	beq et, r23, _p2_key_arrow_d
+	
+	movui r23, KEY_ARROW_R
+	beq et, r23, _p2_key_arrow_r
 
-    movi r7, KEY_A                      # r7 = A
-    beq r6, r7, _key_a_pressed
+	br _eret	
 
-    movi r7, KEY_W                      # r7 = W
-    beq r6, r7, _key_w_pressed
-
-    movi r7, KEY_S                      # r7 = S
-    beq r6, r7, _key_s_pressed
-
-    movi r7, KEY_D                      # r7 = D
-    beq r6, r7, _key_d_pressed
-
-    br _done_player_move                # branch to end exception handler
-
-_key_a_pressed:
-    movia r12, PlayerOneData            # Write the Key into memory
-    stbio r6, 0(r12)
-
-    br _done_player_move                # branch to end exception handler
-
-_key_w_pressed:
-
-    br _done_player_move                # branch to end exception handler
-
-_key_s_pressed:
-
-    br _done_player_move                # branch to end exception handler
-
-_key_d_pressed:
-
-    br _done_player_move                # branch to end exception handler
-
-_done_player_move:                      #END EXCEPTION HANDLER
-    stwio r6, 0(r11)                    # DISPLAY DATA VIA LEDS
-    bne r5, r0, _ps2_valid              # IF MORE CHARS TO READ, RE-LOOP
-    subi ea, ea, 4
-
+_p1_key_a:
+	movia r18, MOVE_LEFT
+	br _eret
+	
+_p1_key_w:
+	movia r18, MOVE_UP
+	br _eret
+	
+_p1_key_s:
+	movia r18, MOVE_DOWN
+	br _eret
+	
+_p1_key_d:
+	movia r18, MOVE_RIGHT
+	br _eret
+	
+_p2_key_arrow_l:
+	movia r19, MOVE_LEFT
+	br _eret
+	
+_p2_key_arrow_u:
+	movia r19, MOVE_UP
+	br _eret
+	
+_p2_key_arrow_d:
+	movia r19, MOVE_DOWN
+	br _eret
+	
+_p2_key_arrow_r:
+	movia r19, MOVE_RIGHT
+	br _eret
+	
+_eret:
+	
+	subi ea, ea, 4
 	eret								# DONE
 	
 	
@@ -131,36 +180,136 @@ _done_player_move:                      #END EXCEPTION HANDLER
 _start:
 	
 	call _setup							# SETUP SUBROUTINE
-	br _infloop							# INFINITE LOOP (TEMP)
-	
-#	call _startscreen
-	
-	
+
+_game:
+
+	#call _splashscreen					# CREATE STARTSCREEN
+	call _game_start
+	br _game 							# GAME OVER: RESTART
+
+
 
 _setup:
 	
-	movia r8, VGA_PBASE					# r8 = VGA PIXEL BASE
-	movia r9, VCB_BASE					# r9 = VCB BASE
-	movia r10, PS2_BASE					# r10 = PS2 BASE
-	movia r11, LED_BASE					# r11 = LED BASE (TEMP)
-
-    # ENABLE DOUBLE BUFFER
-    movui  r4, 0x1                      # r4 = TEMP
-    stwio r4, VCB_FRONT_BUFFER(r9)      # Enable double buffer (swap pixel data from back buffer to front buffer)
-
+	movia r8, VCB_BASE					# r8 = VCB BASE
+	movia r9, PS2_BASE					# r9 = PS2 BASE
+	
+	# VIDEO CONTROL BUFFER SETUP
+	movui r4, 0x1						# r4 = TEMP
+	#stwio r4, VCB_FRONT_BUFFER(r8)		# DOUBLE BUFFER ENABLED
+	movia r4, 0x08090020				# DEFAULT VCB CONFIG
+	stwio r4, VCB_CONFIG(r8)			# VCB CONFIGURED
+	
 	# INTERRUPT SETUP
+	movui r4, 0x1
 	wrctl ctl0, r4						# CPU	(status)
-	stwio r4, PS2_CONTROL(r10)			# PS2	(IRQ 7)
-	movui r4, 0x7
+	stwio r4, PS2_CONTROL(r9)			# PS2	(IRQ 7)
+	movui r4, 0x80
 	wrctl ctl3, r4						# CPU	(ienable)
 	
-	stwio r0, 0(r11)					# RESETTING LEDS (TEMP)
-	
+	# COLOUR SETUP
+	movia r10, COLOUR_WHITE				# r10 = WHITE
+	movia r11, COLOUR_BLACK				# r11 = BLACK
+	movia r12, COLOUR_BLUE				# r12 = BLUE
+	movia r13, COLOUR_RED				# r13 = RED
+
+	# SRAM BUFFER MEMORY SETUP
+	movia r14, VGA_FRONT_BUFFER 		# r14 = FRONT BUFFER MEMORY LOCATION
+	movia r15, VGA_FRONT_BUFFER_END		# r15 = END OF FRONT BUFFER MEMORY LOCATION
+	movia r16, VGA_BACK_BUFFER 			# r16 = BACK BUFFER MEMORY LOCATION
+	movia r17, VGA_BACK_BUFFER_END		# r17 = END OF BACK BUFFER MEMORY LOCATION
+
+	# PLAYER MOVEMENT STARTING VALUES
+	movia r18, MOVE_RIGHT				# r18 = PLAYER 1 MOVEMENT
+	movia r19, MOVE_LEFT				# r19 = PLAYER 2 MOVEMENT
+
+	# PLAYER STARTING POSITIONS
+	movia r20, P1_START_COORDS			# r20 = PLAYER 1 STARTING COORDINATES
+	movia r21, P2_START_COORDS			# r21 = PLAYER 2 STARTING COORDINATES
+
 	ret
 	
-#_startscreen:
 
 
+_splashscreen:							# START-UP SPLASHSCREEN
+										# IMMEDIATELY RESET BYTE IN MEMORY TO ' '
+										# CHECK BYTE IN MEMORY FOR BRANCH TO GAME START
+	br _splashscreen					
+
+
+	### GAME ###
+
+
+_game_start:							# GAME START
 	
-_infloop:
-	br _inf_loop
+	# SETUP FOR GAME
+
+_fill_background:
+
+	sth r10, 0(r14)						# FILL FRONT BUFFER
+	addi r14, r14, 2
+
+	sth r10, 0(r16)						# FILL BACK BUFFER
+	addi r16, r16, 2
+	
+	ble r14, r15, _fill_background		# LOOP UNTIL FILLED
+
+	movia r14, VGA_FRONT_BUFFER 		# RE-INSTANTIATE r14 TO FRONT BUFFER
+	movia r16, VGA_BACK_BUFFER 			# RE-INSTANTIATE r16 TO BACK BUFFER
+
+	movi r2, 1							# r2 = SWAP REGISTER (0x1)
+
+	stwio r14, VCB_BACK_BUFFER(r8)		# STORING BACKGROUND TO BACK BUFFER
+	stwio r2, VCB_FRONT_BUFFER(r8)		# SWAPPING BUFFERS
+	stwio r16, VCB_BACK_BUFFER(r8)		# STORING BACKGROUND TO BACK BUFFER
+
+	mov r6, r14							# COPY OF BUFFERS
+	mov r7, r16							# FOR PLAYER 2
+
+	add r14, r14, r20 					# MOVING PLAYER 1
+	add r16, r16, r20 					# AND 2 INTO
+	add r6, r6, r21 					# STARTING
+	add r7, r7, r21 					# POSITIONS
+
+_in_game:								# IN GAME
+	
+_wait:									# WAIT FOR SWAP
+	
+	ldwio r4, VCB_CONFIG(r8)
+	andi r4, r4, 1
+	bne r4, r0, _wait
+
+_swap:									# SWAP BUFFERS
+	
+	sth r12, VCB_FRONT_BUFFER(r14)		# DRAWING PLAYER 1 FRONT BUFFER
+	add r14, r14, r18
+
+	sth r13, VCB_FRONT_BUFFER(r6)		# DRAWING PLAYER 2 FRONT BUFFER
+	add r6, r6, r19
+
+	sth r12, VCB_FRONT_BUFFER(r16)		# DRAWING PLAYER 1 BACK BUFFER
+	add r16, r16, r18
+
+	sth r13, VCB_FRONT_BUFFER(r7)		# DRAWING PLAYER 2 BACK BUFFER
+	add r7, r7, r19
+
+	stwio r2, VCB_FRONT_BUFFER(r8)		# PERFORMING SWAP
+
+	br _wait
+
+_check_collision:						# CHECK FOR COLLISION
+	
+	br _in_game
+
+_collision:								# COLLISION OCCURED
+	
+	# DISABLE DOUBLE BUFFER
+	# CHANGE SCORE ON HEX DISPLAY
+	# CHECK IF PERSON HAS REACHED 3 POINTS
+	# IF SO: WINNER SCREEN, BUTTON PRESSED = ret (BACK TO _game)
+	# ELSE: WAIT FOR BUTTON PRESS, br _game_start
+
+_game_end:								# GAME FINISHED
+	
+	br _game_end						# WAIT FOR BUTTON PRESS
+	ret 								# RESTART
