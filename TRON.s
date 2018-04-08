@@ -2,7 +2,7 @@
 	 #####################
 	#######################
 	##					 ##
-	##	  TRON v2.0		 ##
+	##	  TRON v4.0		 ##
 	##					 ##
 	##	  Created by 	 ##
 	##	  Graham Sider	 ##
@@ -338,6 +338,16 @@ _draw_border_right:
 
 _in_game:								# IN GAME
 	
+_check_collision:						# CHECK FOR COLLISION
+	
+	ldh r4, VCB_FRONT_BUFFER(r14)		# GRAB COLOUR OF NEXT PIXEL FOR PLAYER 1
+	andi r4, r4, 0xFFFF					# IF(!WHITE) GOTO _collision_p1
+	bne r4, r10, _collision_p1
+
+	ldh r4, VCB_FRONT_BUFFER(r6)		# GRAB COLOUR OF NEXT PIXEL FOR PLAYER 2
+	andi r4, r4, 0xFFFF					# IF(!WHITE) GOTO _collision_p2
+	bne r4, r10, _collision_p2
+
 _wait:									# WAIT TO SWAP
 	
 	ldwio r4, VCB_CONFIG(r8)
@@ -358,19 +368,29 @@ _swap:									# SWAP BUFFERS
 	sth r13, VCB_FRONT_BUFFER(r7)		# DRAWING PLAYER 2 BACK BUFFER
 	add r7, r7, r19
 
-_check_collision:						# CHECK FOR COLLISION
-
 	stwio r2, VCB_FRONT_BUFFER(r8)		# PERFORMING SWAP
 
 	br _in_game
 
-_collision:								# COLLISION OCCURED
+_collision_p1:							# PLAYER 1 COLLISION OCCURED
 	
+	ldh r4, VCB_FRONT_BUFFER(r6)		# GRAB COLOUR OF NEXT PIXEL FOR PLAYER 2
+	andi r4, r4, 0xFFFF
+	bne r4, r10, _same_frame_collision	# COLLISION OCCURED FOR BOTH PLAYERS AT EXACT SAME FRAME
+
 	# CHANGE SCORE ON HEX DISPLAY
 	# CHECK IF PERSON HAS REACHED 3 POINTS
 	# IF SO: WINNER SCREEN, BUTTON PRESSED = ret (BACK TO _game)
 	# ELSE: WAIT FOR BUTTON PRESS, br _game_start
 
+_collision_p2:							# PLAYER 2 COLLISION OCCURED
+	
+
+
+_same_frame_collision:
+	
+
+	
 _game_end:								# GAME FINISHED
 	
 	br _game_end						# WAIT FOR BUTTON PRESS
