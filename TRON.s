@@ -2,7 +2,7 @@
 	 #####################
 	#######################
 	##					 ##
-	##	  TRON v4.0		 ##
+	##	  TRON v4.1		 ##
 	##					 ##
 	##	  Created by 	 ##
 	##	  Graham Sider	 ##
@@ -69,10 +69,11 @@
 	GAME_OR_SPLASH:	.byte ' '
 
     # COLOUR VALS
-    .equ COLOUR_RED, 0xF100
-    .equ COLOUR_BLUE, 0x001F
-	.equ COLOUR_WHITE, 0xFFFF
-	.equ COLOUR_BLACK, 0x0000
+    .equ COLOUR_P1, 0xCB3A						# WAS 0xC87A
+    .equ COLOUR_P2, 0x37E4
+	.equ COLOUR_BACKGROUND, 0x0845
+	.equ COLOUR_BACKGROUND_FLUFF, 0x3576
+	.equ COLOUR_BORDER, 0x3577
 
 	# BUFFER SRAM MEMORY LOCATIOINS
 	.equ VGA_FRONT_BUFFER, 0x01000000
@@ -215,10 +216,11 @@ _setup:
 	wrctl ctl3, r4						# CPU	(ienable)
 	
 	# COLOUR SETUP
-	movia r10, COLOUR_WHITE				# r10 = WHITE
-	movia r11, COLOUR_BLACK				# r11 = BLACK
-	movia r12, COLOUR_BLUE				# r12 = BLUE
-	movia r13, COLOUR_RED				# r13 = RED
+	movia r3, COLOUR_BORDER				# r3 = BORDER
+	movia r10, COLOUR_BACKGROUND		# r10 = BACKGROUND
+	movia r11, COLOUR_BACKGROUND_FLUFF	# r11 = BACKGROUND FLUFF
+	movia r12, COLOUR_P1				# r12 = PLAYER 1 COLOUR
+	movia r13, COLOUR_P2				# r13 = PLAYER 2 COLOUR
 
 	# SRAM BUFFER MEMORY SETUP
 	movia r14, VGA_FRONT_BUFFER 		# r14 = FRONT BUFFER MEMORY LOCATION
@@ -251,7 +253,12 @@ _game_start:							# GAME START
 	
 	# SETUP FOR GAME
 
+	add r4, r0, r0
+	addi r5, r0, 16
+
 _fill_background:
+
+	beq r4, r5, _fill_background_line
 
 	sth r10, 0(r14)						# FILL FRONT BUFFER
 	addi r14, r14, 2
@@ -259,20 +266,35 @@ _fill_background:
 	sth r10, 0(r16)						# FILL BACK BUFFER
 	addi r16, r16, 2
 	
+	addi r4, r4, 1
+
 	ble r14, r15, _fill_background		# LOOP UNTIL FILLED
+	br _draw_borders
+
+_fill_background_line:
+	
+	sth r11, 0(r14)						# FILL FRONT BUFFER
+	addi r14, r14, 2
+
+	sth r11, 0(r16)						# FILL BACK BUFFER
+	addi r16, r16, 2
+	
+	add r4, r0, r0
+
+	ble r14, r15, _fill_background		# LOOP UNTIL FILLED
+
+_draw_borders:
 
 	movia r4, SCREEN_BOTTOM_LEFT_COORDS	# r4, r5 = TEMP
 	movia r5, VGA_FRONT_BUFFER 			# (FOR BORDER DRAWING)
 	add r4, r4, r5
 
-	# DRAW BORDERS
-
 _draw_border_bottom:
 	
-	sth r11, 0(r14)
+	sth r3, 0(r14)
 	subi r14, r14, 2
 
-	sth r11, 0(r16)
+	sth r3, 0(r16)
 	subi r16, r16, 2
 
 	bne r14, r4, _draw_border_bottom
@@ -281,10 +303,10 @@ _draw_border_bottom:
 
 _draw_border_left:
 	
-	sth r11, 0(r14)
+	sth r3, 0(r14)
 	subi r14, r14, 1024
 
-	sth r11, 0(r16)
+	sth r3, 0(r16)
 	subi r16, r16, 1024
 
 	bne r14, r4, _draw_border_left
@@ -295,10 +317,10 @@ _draw_border_left:
 
 _draw_border_top:
 	
-	sth r11, 0(r14)
+	sth r3, 0(r14)
 	addi r14, r14, 2
 
-	sth r11, 0(r16)
+	sth r3, 0(r16)
 	addi r16, r16, 2
 
 	bne r14, r4, _draw_border_top
@@ -309,10 +331,10 @@ _draw_border_top:
 
 _draw_border_right:
 	
-	sth r11, 0(r14)
+	sth r3, 0(r14)
 	addi r14, r14, 1024
 
-	sth r11, 0(r16)
+	sth r3, 0(r16)
 	addi r16, r16, 1024
 
 	bne r14, r4, _draw_border_right
@@ -338,15 +360,23 @@ _draw_border_right:
 
 _in_game:								# IN GAME
 	
-_check_collision:						# CHECK FOR COLLISION
+_check_collision_p1:					# CHECK FOR PLAYER 1 COLLISION
 	
 	ldh r4, VCB_FRONT_BUFFER(r14)		# GRAB COLOUR OF NEXT PIXEL FOR PLAYER 1
-	andi r4, r4, 0xFFFF					# IF(!WHITE) GOTO _collision_p1
-	bne r4, r10, _collision_p1
+	andi r4, r4, 0xFFFF					
+	beq r4, r10, _check_collision_p2	# IF(BACKGROUND) GOTO _check_collision_p2
+	beq r4, r11, _check_collision_p2	# IF(BACKGROUND_FLUFF) GOTO _check_collision_p2
+
+	br _check_same_frame_collision		# ELSE GOTO _check_same_frame_collision
+
+_check_collision_p2:
 
 	ldh r4, VCB_FRONT_BUFFER(r6)		# GRAB COLOUR OF NEXT PIXEL FOR PLAYER 2
-	andi r4, r4, 0xFFFF					# IF(!WHITE) GOTO _collision_p2
-	bne r4, r10, _collision_p2
+	andi r4, r4, 0xFFFF					
+	beq r4, r10, _wait	 				# IF(BACKGROUND) GOTO _wait
+	beq r4, r11, _wait					# IF(BACKGROUND_FLUFF) GOTO _wait
+
+	br _collision_p2 					# ELSE GOTO _collision_p2
 
 _wait:									# WAIT TO SWAP
 	
@@ -372,11 +402,17 @@ _swap:									# SWAP BUFFERS
 
 	br _in_game
 
-_collision_p1:							# PLAYER 1 COLLISION OCCURED
+_check_same_frame_collision:
 	
 	ldh r4, VCB_FRONT_BUFFER(r6)		# GRAB COLOUR OF NEXT PIXEL FOR PLAYER 2
 	andi r4, r4, 0xFFFF
-	bne r4, r10, _same_frame_collision	# COLLISION OCCURED FOR BOTH PLAYERS AT EXACT SAME FRAME
+	beq r4, r10, _collision_p1 			# IF(BACKGROUND) GOTO _collision_p1
+	beq r4, r11, _collision_p1 			# IF(BACKGROUND_FLUFF) GOTO _collision_p1
+
+	br _same_frame_collision 			# COLLISION OCCURED FOR BOTH PLAYERS AT EXACT SAME FRAME
+	
+	
+_collision_p1:							# PLAYER 1 COLLISION OCCURED
 
 	# CHANGE SCORE ON HEX DISPLAY
 	# CHECK IF PERSON HAS REACHED 3 POINTS
