@@ -86,7 +86,28 @@
 	.equ SCREEN_BOTTOM_LEFT_COORDS, 0x3BC00
 	.equ SCREEN_BOTTOM_RIGHT_COORDS, 0x3BE7E
 
-	
+    # HEX DISPLAY (HEX0 = PLAYER 1 & HEX1 = PLAYER 2)
+    .equ HEX_ADDRESS, 0xFF200020
+
+    .equ SCORE_ZERO_ZERO, 0x3F3F                # HEX0 = 0 & HEX1 = 0
+    .equ SCORE_ONE_ZERO, 0x063F                 # HEX0 = 1 & HEX1 = 0
+    .equ SCORE_TWO_ZERO, 0x5B3F                 # HEX0 = 2 & HEX1 = 0
+    .equ SCORE_THREE_ZERO, 0x4F3F               # HEX0 = 3 & HEX1 = 0
+
+    .equ SCORE_ZERO_ONE, 0x3F06                 # HEX0 = 0 & HEX1 = 1
+    .equ SCORE_ONE_ONE, 0x0606                  # HEX0 = 1 & HEX1 = 1
+    .equ SCORE_TWO_ONE, 0x5B06                  # HEX0 = 2 & HEX1 = 1
+    .equ SCORE_THREE_ONE, 0x4F06                # HEX0 = 3 & HEX1 = 1
+
+    .equ SCORE_ZERO_TWO, 0x3F5B                 # HEX0 = 0 & HEX1 = 2
+    .equ SCORE_ONE_TWO, 0x065B                  # HEX0 = 1 & HEX1 = 2
+    .equ SCORE_TWO_TWO, 0x5B5B                  # HEX0 = 2 & HEX1 = 2
+    .equ SCORE_THREE_TWO, 0x4F5B                # HEX0 = 3 & HEX1 = 2
+
+    .equ SCORE_ZERO_THREE, 0x3F4F               # HEX0 = 0 & HEX1 = 3
+    .equ SCORE_ONE_THREE, 0x064F                # HEX0 = 1 & HEX1 = 3
+    .equ SCORE_TWO_THREE, 0x5B4F                # HEX0 = 2 & HEX1 = 3
+    .equ SCORE_THREE_THREE, 0x4F4F              # HEX0 = 3 & HEX1 = 3
 	
 	
 	
@@ -234,6 +255,8 @@ _setup:
 	movia r20, P1_START_COORDS			# r20 = PLAYER 1 STARTING COORDINATES
 	movia r21, P2_START_COORDS			# r21 = PLAYER 2 STARTING COORDINATES
 
+    # HEX DISPLAY SETUP
+    movia r22, HEX_ADDRESS              # r22 = HEX DISPLAY ADDRESS
 	ret
 	
 
@@ -250,6 +273,12 @@ _splashscreen:							# START-UP SPLASHSCREEN
 _game_start:							# GAME START
 	
 	# SETUP FOR GAME
+
+_set_score_to_zero_on_hex_display:
+
+    movia r4, SCORE_ZERO_ZERO
+    stwio r4, 0(r22)                    # INITIAL SCORE IS ZERO, ZERO
+
 
 _fill_background:
 
@@ -378,18 +407,177 @@ _collision_p1:							# PLAYER 1 COLLISION OCCURED
 	andi r4, r4, 0xFFFF
 	bne r4, r10, _same_frame_collision	# COLLISION OCCURED FOR BOTH PLAYERS AT EXACT SAME FRAME
 
+    ldh r4, 0(r22)
+    andi r4, r4, 0xFFFF
+
+    # PLAYER2 SCORE IS ZERO
+    movia r5, SCORE_ZERO_ZERO
+    beq r4, r5, _score_one_zero_p1
+
+    movia r5, SCORE_ONE_ZERO
+    beq r4, r5, _score_two_zero_p1
+
+    movia r5, SCORE_TWO_ZERO
+    beq r4, r5, _score_three_zero_player1_wins
+
+    # PLAYER2 SCORE IS ONE
+    movia r5, SCORE_ZERO_ONE
+    beq r4, r5, _score_one_one_p1
+
+    movia r5, SCORE_ONE_ONE
+    beq r4, r5, _score_two_one_p1
+
+    movia r5, SCORE_TWO_ONE
+    beq r4, r5, _score_three_one_player1_wins
+
+    # PLAYER2 SCORE IS TWO
+    movia r5, SCORE_ZERO_TWO
+    beq r4, r5, _score_one_two_p1
+
+    movia r5, SCORE_ONE_TWO
+    beq r4, r5, _score_two_two_p1
+
+    movia r5, SCORE_TWO_TWO
+    beq r4, r5, _score_three_two_player1_wins
+
+# PLAYER2 SCORE IS ZERO
+_score_one_zero_p1:
+    movia r4, SCORE_ONE_ZERO
+    stwio r4, 0(r22)
+    br _fill_background
+
+_score_two_zero_p1:
+    movia r4, SCORE_TWO_ZERO
+    stwio r4, 0(r22)
+    br _fill_background
+
+_score_three_zero_player1_wins:
+    movia r4, SCORE_THREE_ZERO
+    stwio r4, 0(r22)
+    br _game_end
+
+# PLAYER2 SCORE IS ONE
+_score_one_one_p1:
+    movia r4, SCORE_ONE_ONE
+    stwio r4, 0(r22)
+    br _fill_background
+
+_score_two_one_p1:
+    movia r4, SCORE_TWO_ONE
+    stwio r4, 0(r22)
+    br _fill_background
+
+_score_three_one_player1_wins:
+    movia r4, SCORE_THREE_ONE
+    stwio r4, 0(r22)
+    br _game_end
+
+# PLAYER2 SCORE IS TWO
+_score_one_two_p1:
+    movia r4, SCORE_ONE_TWO
+    stwio r4, 0(r22)
+    br _fill_background
+
+_score_two_two_p1:
+    movia r4, SCORE_ONE_TWO
+    stwio r4, 0(r22)
+    br _fill_background
+
+_score_three_two_player1_wins:
+    movia r4, SCORE_THREE_TWO
+    stwio r4, 0(r22)
+    br _game_end
 	# CHANGE SCORE ON HEX DISPLAY
 	# CHECK IF PERSON HAS REACHED 3 POINTS
 	# IF SO: WINNER SCREEN, BUTTON PRESSED = ret (BACK TO _game)
 	# ELSE: WAIT FOR BUTTON PRESS, br _game_start
 
 _collision_p2:							# PLAYER 2 COLLISION OCCURED
-	
 
+    ldh r4, 0(r22)
+    andi r4, r4, 0xFFFF
+
+    # PLAYER1 SCORE IS ZERO
+    movia r5, SCORE_ZERO_ZERO
+    beq r4, r5, _score_zero_one_p2
+
+    movia r5, SCORE_ZERO_ONE
+    beq r4, r5, _score_zero_two_p2
+
+    movia r5, SCORE_ZERO_TWO
+    beq r4, r5, _score_zero_three_player2_wins
+
+    # PLAYER1 SCORE IS ONE
+    movia r5, SCORE_ONE_ZERO
+    beq r4, r5, _score_one_one_p2
+
+    movia r5, SCORE_ONE_ONE
+    beq r4, r5, _score_one_two_p2
+
+    movia r5, SCORE_ONE_TWO
+    beq r4, r5, _score_one_three_player2_wins
+
+    # PLAYER1 SCORE IS TWO
+    movia r5, SCORE_TWO_ZERO
+    beq r4, r5, _score_two_one_p2
+
+    movia r5, SCORE_TWO_ONE
+    beq r4, r5, _score_two_two_p2
+
+    movia r5, SCORE_TWO_TWO
+    beq r4, r5, _score_two_three_player2_wins
+
+# PLAYER2 SCORE IS ZERO
+_score_zero_one_p2:
+    movia r4, SCORE_ZERO_ONE
+    stwio r4, 0(r22)
+    br _fill_background
+
+_score_zero_two_p2:
+    movia r4, SCORE_ZERO_TWO
+    stwio r4, 0(r22)
+    br _fill_background
+
+_score_zero_three_player2_wins:
+    movia r4, SCORE_ZERO_THREE
+    stwio r4, 0(r22)
+    br _game_end
+
+# PLAYER2 SCORE IS ONE
+_score_one_one_p2:
+    movia r4, SCORE_ONE_ONE
+    stwio r4, 0(r22)
+    br _fill_background
+
+_score_one_two_p2:
+    movia r4, SCORE_ONE_TWO
+    stwio r4, 0(r22)
+    br _fill_background
+
+_score_one_three_player2_wins:
+    movia r4, SCORE_ONE_THREE
+    stwio r4, 0(r22)
+    br _game_end
+
+# PLAYER2 SCORE IS TWO
+_score_two_one_p2:
+    movia r4, SCORE_TWO_ONE
+    stwio r4, 0(r22)
+    br _fill_background
+
+_score_two_two_p2:
+    movia r4, SCORE_TWO_TWO
+    stwio r4, 0(r22)
+    br _fill_background
+
+_score_two_three_player2_wins:
+    movia r4, SCORE_TWO_THREE
+    stwio r4, 0(r22)
+    br _game_end
 
 _same_frame_collision:
 	
-
+br _fill_background
 	
 _game_end:								# GAME FINISHED
 	
