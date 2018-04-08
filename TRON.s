@@ -75,10 +75,17 @@
 	.equ COLOUR_BLACK, 0x0000
 
 	# BUFFER SRAM MEMORY LOCATIOINS
-	.equ VGA_FRONT_BUFFER, 0X01000000
-	.equ VGA_FRONT_BUFFER_END, 0X0103FFFF		# <NOTE> CHANGE TO 0103BE7E ?
-	.equ VGA_BACK_BUFFER, 0X02000000
-	.equ VGA_BACK_BUFFER_END, 0x0203FFFF
+	.equ VGA_FRONT_BUFFER, 0x01000000
+	.equ VGA_FRONT_BUFFER_END, 0x0103BE7E		# <NOTE> CHANGED FROM 0103FFFF TO 0103BE7E
+	.equ VGA_BACK_BUFFER, 0x02000000
+	.equ VGA_BACK_BUFFER_END, 0x0203BE7E
+
+	# OTHER SCREEN LOCATIONS
+	.equ SCREEN_TOP_LEFT_COORDS, 0x0
+	.equ SCREEN_TOP_RIGHT_COORDS, 0x27E
+	.equ SCREEN_BOTTOM_LEFT_COORDS, 0x3BC00
+	.equ SCREEN_BOTTOM_RIGHT_COORDS, 0x3BE7E
+
 	
 	
 	
@@ -184,7 +191,7 @@ _start:
 _game:
 
 	#call _splashscreen					# CREATE STARTSCREEN
-	call _game_start
+	br _game_start
 	br _game 							# GAME OVER: RESTART
 
 
@@ -254,6 +261,64 @@ _fill_background:
 	
 	ble r14, r15, _fill_background		# LOOP UNTIL FILLED
 
+	movia r4, SCREEN_BOTTOM_LEFT_COORDS	# r4, r5 = TEMP
+	movia r5, VGA_FRONT_BUFFER 			# (FOR BORDER DRAWING)
+	add r4, r4, r5
+
+	# DRAW BORDERS
+
+_draw_border_bottom:
+	
+	sth r11, 0(r14)
+	subi r14, r14, 2
+
+	sth r11, 0(r16)
+	subi r16, r16, 2
+
+	bne r14, r4, _draw_border_bottom
+
+	movia r4, VGA_FRONT_BUFFER
+
+_draw_border_left:
+	
+	sth r11, 0(r14)
+	subi r14, r14, 1024
+
+	sth r11, 0(r16)
+	subi r16, r16, 1024
+
+	bne r14, r4, _draw_border_left
+
+	movia r4, SCREEN_TOP_RIGHT_COORDS
+	movia r5, VGA_FRONT_BUFFER
+	add r4, r4, r5
+
+_draw_border_top:
+	
+	sth r11, 0(r14)
+	addi r14, r14, 2
+
+	sth r11, 0(r16)
+	addi r16, r16, 2
+
+	bne r14, r4, _draw_border_top
+
+	movia r4, SCREEN_BOTTOM_RIGHT_COORDS
+	movia r5, VGA_FRONT_BUFFER
+	add r4, r4, r5
+
+_draw_border_right:
+	
+	sth r11, 0(r14)
+	addi r14, r14, 1024
+
+	sth r11, 0(r16)
+	addi r16, r16, 1024
+
+	bne r14, r4, _draw_border_right
+	
+	# BORDER DRAWING FINISHED
+
 	movia r14, VGA_FRONT_BUFFER 		# RE-INSTANTIATE r14 TO FRONT BUFFER
 	movia r16, VGA_BACK_BUFFER 			# RE-INSTANTIATE r16 TO BACK BUFFER
 
@@ -273,14 +338,14 @@ _fill_background:
 
 _in_game:								# IN GAME
 	
-_wait:									# WAIT FOR SWAP
+_wait:									# WAIT TO SWAP
 	
 	ldwio r4, VCB_CONFIG(r8)
 	andi r4, r4, 1
 	bne r4, r0, _wait
 
 _swap:									# SWAP BUFFERS
-	
+
 	sth r12, VCB_FRONT_BUFFER(r14)		# DRAWING PLAYER 1 FRONT BUFFER
 	add r14, r14, r18
 
@@ -293,17 +358,14 @@ _swap:									# SWAP BUFFERS
 	sth r13, VCB_FRONT_BUFFER(r7)		# DRAWING PLAYER 2 BACK BUFFER
 	add r7, r7, r19
 
+_check_collision:						# CHECK FOR COLLISION
+
 	stwio r2, VCB_FRONT_BUFFER(r8)		# PERFORMING SWAP
 
-	br _wait
-
-_check_collision:						# CHECK FOR COLLISION
-	
 	br _in_game
 
 _collision:								# COLLISION OCCURED
 	
-	# DISABLE DOUBLE BUFFER
 	# CHANGE SCORE ON HEX DISPLAY
 	# CHECK IF PERSON HAS REACHED 3 POINTS
 	# IF SO: WINNER SCREEN, BUTTON PRESSED = ret (BACK TO _game)
@@ -312,4 +374,4 @@ _collision:								# COLLISION OCCURED
 _game_end:								# GAME FINISHED
 	
 	br _game_end						# WAIT FOR BUTTON PRESS
-	ret 								# RESTART
+#	ret 								# RESTART
