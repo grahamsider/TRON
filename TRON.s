@@ -1,18 +1,18 @@
 
-	 #####################
-	#######################
-	##					 ##
-	##	  TRON v5.0		 ##
-	##					 ##
-	##	  Created by 	 ##
-	##	  Graham Sider	 ##
-	##	& Junhyeok Hong	 ##
-	##  				 ##
-	##	  ECE 243		 ##
-	##	  2018			 ##	   			
-	##					 ##
-	#######################
-	 #####################
+	 #########################
+	###########################
+	##                       ##
+	##       TRON v5.0       ##
+	##                       ##
+	##       Created by      ##
+	##      Graham Sider     ##
+	##    & Junhyeok Hong    ##
+	##                       ##
+	##        ECE 243        ##
+	##         2018          ##	   			
+	##                       ##
+	###########################
+	 #########################
 	
 	
 	
@@ -75,7 +75,7 @@
 	.equ MOVE_DOWN, 1024
 
     # COLOUR VALS
-    .equ COLOUR_P1, 0xCB3A						# WAS 0xC87A
+    .equ COLOUR_P1, 0xCB3A
     .equ COLOUR_P2, 0x37E4
 	.equ COLOUR_BACKGROUND, 0x0845
 	.equ COLOUR_BACKGROUND_FLUFF, 0x3576
@@ -83,7 +83,7 @@
 
 	# BUFFER SRAM MEMORY LOCATIOINS
 	.equ VGA_FRONT_BUFFER, 0x01000000
-	.equ VGA_FRONT_BUFFER_END, 0x0103BE7E		# <NOTE> CHANGED FROM 0103FFFF TO 0103BE7E
+	.equ VGA_FRONT_BUFFER_END, 0x0103BE7E
 	.equ VGA_BACK_BUFFER, 0x02000000
 	.equ VGA_BACK_BUFFER_END, 0x0203BE7E
 
